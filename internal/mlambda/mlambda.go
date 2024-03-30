@@ -10,16 +10,20 @@ import (
 	"time"
 )
 
+// Request represents a single incoming lambda event.
 type Request struct {
 	Body io.Reader
 }
 
+// Server receives lambda invocations, handles them with the supplied
+// handler, and returns the handler's response.
 type Server struct {
 	Handler func(ctx context.Context, response io.Writer, request *Request) error
 
 	client *client
 }
 
+// Start process lambda invocations indefinitely.
 func (s *Server) Start(ctx context.Context) error {
 	c, err := newClientFromEnv()
 	if err != nil {
@@ -127,7 +131,7 @@ func (s *Server) doWork(parentCtx context.Context) error {
 }
 
 // serveLocal runs the handler on an HTTP-server on localhost. It is intended
-// for testing out the program locally.
+// for testing out the handler locally.
 func (s *Server) serveLocal(ctx context.Context) error {
 	addr := "localhost:8080"
 	fmt.Println("Serving lambda on ", addr)
@@ -135,6 +139,7 @@ func (s *Server) serveLocal(ctx context.Context) error {
 	srv := &http.Server{
 		Addr: addr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// serve lambda-handler as an http-handler
 			wrapper := &writerWrapper{w: w}
 			err := s.Handler(r.Context(), wrapper, &Request{Body: r.Body})
 			if err == nil {

@@ -18,11 +18,14 @@ import (
 
 const apiVersion = "2018-06-01"
 
+// client implements the lambda-runtime API
 type client struct {
 	client   *http.Client
 	endpoint string
 }
 
+// newClientFromEnv creates an instance of *client from the
+// expected lambda environment variables.
 func newClientFromEnv() (*client, error) {
 	c := &client{
 		client:   http.DefaultClient,
@@ -44,6 +47,7 @@ type request struct {
 	cognitoIdentity    string
 }
 
+// nextInvocation returns the next event to be processed.
 func (c *client) nextInvocation(ctx context.Context) (*request, error) {
 	url := "http://" + c.endpoint + "/" + apiVersion + "/runtime/invocation/next"
 
@@ -86,6 +90,7 @@ type responseOptions struct {
 	body      io.Reader
 }
 
+// invocationResponse returns a response for a specific event.
 func (c *client) invocationResponse(ctx context.Context, opts responseOptions) error {
 	url := "http://" + c.endpoint + "/" + apiVersion + "/runtime/invocation/" + opts.requestId + "/response"
 	httpRequest, err := http.NewRequestWithContext(ctx, "POST", url, opts.body)
@@ -115,6 +120,7 @@ type errorOptions struct {
 	stackTrace   []string
 }
 
+// invocationError returns an error for a specific event.
 func (c *client) invocationError(ctx context.Context, opts errorOptions) error {
 	var requestBody struct {
 		ErrorMessage string   `json:"errorMessage"`
