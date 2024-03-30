@@ -137,10 +137,20 @@ func (s *Server) serveLocal(ctx context.Context) error {
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			wrapper := &writerWrapper{w: w}
 			err := s.Handler(r.Context(), wrapper, &Request{Body: r.Body})
-			if err != nil && !wrapper.didWrite {
+			if err == nil {
+				return
+			}
+
+			if !wrapper.didWrite {
+				// return 500 if the handler hasn't started writing the response yet
 				w.WriteHeader(500)
 				fmt.Fprintln(w, err)
+				return
 			}
+
+			// otherwise signal to the http package to close the response
+			// uncleanly, so the caller at least knows something went wrong
+			panic(http.ErrAbortHandler)
 		}),
 	}
 
