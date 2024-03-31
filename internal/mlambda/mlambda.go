@@ -15,12 +15,24 @@ type Request struct {
 	Body io.Reader
 }
 
+type Handler interface {
+	Invoke(ctx context.Context, w io.Writer, r *Request) error
+}
+
+type HandlerFunc func(ctx context.Context, w io.Writer, r *Request) error
+
+// Invoke implements Handler.
+func (h HandlerFunc) Invoke(ctx context.Context, w io.Writer, r *Request) error {
+	return h(ctx, w, r)
+}
+
+var _ Handler = (HandlerFunc)(nil)
+
 // Server receives lambda invocations, handles them with the supplied
 // handler, and returns the handler's response.
 type Server struct {
-	Handler func(ctx context.Context, response io.Writer, request *Request) error
-
-	client *client
+	Handler Handler
+	client  *client
 }
 
 // Start process lambda invocations indefinitely.
@@ -83,7 +95,7 @@ func (s *Server) doWork(parentCtx context.Context) error {
 	}()
 
 	go func() {
-		err := s.Handler(ctx, pipeWriter, &Request{
+		err := s.Handler.Invoke(ctx, pipeWriter, &Request{
 			Body: req.body,
 		})
 		if err != nil {
@@ -141,7 +153,7 @@ func (s *Server) serveLocal(ctx context.Context) error {
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// serve lambda-handler as an http-handler
 			wrapper := &writerWrapper{w: w}
-			err := s.Handler(r.Context(), wrapper, &Request{Body: r.Body})
+			err := s.Handler.Invoke(r.Context(), wrapper, &Request{Body: r.Body})
 			if err == nil {
 				return
 			}

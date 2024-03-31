@@ -25,11 +25,11 @@ func mainErr() error {
 	defer close()
 
 	s := mlambda.Server{
-		Handler: func(ctx context.Context, w io.Writer, request *mlambda.Request) error {
+		Handler: mlambda.HandlerFunc(func(ctx context.Context, w io.Writer, r *mlambda.Request) error {
 			fmt.Fprintln(w, "PONG")
-			io.Copy(w, request.Body)
+			io.Copy(w, r.Body)
 			return nil
-		},
+		}),
 	}
 
 	return s.Start(ctx)
