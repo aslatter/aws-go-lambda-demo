@@ -75,9 +75,18 @@ func (s *Server) doWork(parentCtx context.Context) error {
 		req.body.Close()
 	}()
 
-	ctx, ctxDone := context.WithCancel(parentCtx)
+	var ctx context.Context
+	var ctxDone func()
+
+	if req.deadline.IsZero() {
+		// this doesn't do much, but it does ensure that if there
+		// is some control-flow bug in this code the handler-goroutine
+		// will be running with a canceled context.
+		ctx, ctxDone = context.WithCancel(parentCtx)
+	} else {
+		ctx, ctxDone = context.WithDeadline(parentCtx, req.deadline)
+	}
 	defer ctxDone()
-	// TODO - add deadline
 
 	// This is the tricky bit. We want to offer a Writer
 	// to the handler because it's a better interface, but
