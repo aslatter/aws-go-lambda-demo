@@ -141,8 +141,19 @@ func (s *Server) doWork(parentCtx context.Context) error {
 	}
 
 	// the app-handler has started producing a response, so
-	// we're going to start sending it up
-	// TODO - do something with error
+	// we're going to start sending it up.
+	//
+	// at this point, if the handler returns an error after
+	// we get this far the reader we pass to the Go http
+	// client will return that error from its 'Read' method,
+	// which results in either:
+	// * and incomplete chunk-encoded payload
+	// * a content-length which is mis-matched from the bytes
+	//   sent
+	// either of which should be treated as an error by whatever
+	// is receiving the payload.
+	//
+	// TODO - do something with error-return?
 	_ = s.client.invocationResponse(parentCtx, responseOptions{
 		requestId: req.id,
 		body:      bufReader,
